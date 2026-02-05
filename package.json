@@ -9,7 +9,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "npm run build && c8 --all --include='dist/**/*.js' --reporter=text --reporter=lcov --check-coverage --lines 90 --statements 90 --branches 75 --functions 75 node --test test/*.test.js"
   },
   "keywords": [
     "b2c",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "c8": "^9.1.0",
     "typescript": "^5.3.3"
   },
   "oclif": {

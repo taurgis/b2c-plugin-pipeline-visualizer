@@ -8,6 +8,7 @@ exports.writeDumpToFile = writeDumpToFile;
 const node_fs_1 = __importDefault(require("node:fs"));
 const node_path_1 = __importDefault(require("node:path"));
 const pipelineParser_1 = require("./pipelineParser");
+const pipelineHelpers_1 = require("./pipelineHelpers");
 const layout_1 = require("../webview-ui/layout");
 const constants_1 = require("../webview-ui/constants");
 const edges_1 = require("../webview-ui/edges");
@@ -24,16 +25,16 @@ function generateAsciiDump(options) {
     let filteredNodes = parsed.nodes;
     let filteredEdges = parsed.edges;
     if (normalized.branch) {
-        const result = filterByBranch(parsed.nodes, parsed.edges, normalized.branch);
+        const result = (0, pipelineHelpers_1.filterByBranch)(parsed.nodes, parsed.edges, normalized.branch);
         filteredNodes = result.nodes;
         filteredEdges = result.edges;
         if (filteredNodes.length === 0) {
-            const availableBranches = getAvailableBranches(parsed.nodes);
+            const availableBranches = (0, pipelineHelpers_1.getAvailableBranches)(parsed.nodes);
             throw new Error(`No nodes found for branch "${normalized.branch}". Available branches: ${availableBranches.join(", ")}`);
         }
     }
-    const nodes = toWebviewNodes(filteredNodes);
-    const edges = toWebviewEdges(filteredEdges);
+    const nodes = (0, pipelineHelpers_1.toWebviewNodes)(filteredNodes);
+    const edges = (0, pipelineHelpers_1.toWebviewEdges)(filteredEdges);
     const placedNodes = (0, layout_1.calculateLayout)(nodes, { preserveGrid: true });
     const displayName = normalized.branch
         ? `${parsed.name} (branch: ${normalized.branch})`
@@ -78,97 +79,6 @@ function defaultOutputPath(xmlPath, branch) {
     const outputName = branch ? `${baseName}_${branch}` : baseName;
     return node_path_1.default.join("debug", "layouts", `${outputName}.txt`);
 }
-function toWebviewNodes(nodes) {
-    return nodes.map((node) => ({
-        id: node.id,
-        label: node.label,
-        type: node.type,
-        branch: node.branch,
-        attributes: Object.fromEntries(Object.entries(node.attributes || {}).filter(([, value]) => value !== undefined)),
-        configProperties: node.configProperties ?? [],
-        bindings: node.bindings ?? [],
-        template: node.template
-            ? {
-                name: node.template.name,
-                buffered: node.template.buffered,
-                dynamic: node.template.dynamic,
-            }
-            : null,
-        description: node.description ?? null,
-        position: node.position
-            ? {
-                x: node.position.x,
-                y: node.position.y,
-                orientation: node.position.orientation,
-            }
-            : undefined,
-        sourceLocation: node.sourceLocation,
-    }));
-}
-function toWebviewEdges(edges) {
-    return edges.map((edge) => ({
-        from: edge.from,
-        to: edge.to,
-        label: edge.label,
-        sourceConnector: edge.sourceConnector,
-        targetConnector: edge.targetConnector,
-        display: edge.display
-            ? {
-                bendPoints: edge.display.bendPoints.map((bend) => ({
-                    relativeTo: bend.relativeTo,
-                    x: bend.x,
-                    y: bend.y,
-                })),
-            }
-            : undefined,
-        sourceLocation: edge.sourceLocation,
-    }));
-}
-function filterByBranch(nodes, edges, branchFilter) {
-    const startNode = nodes.find((n) => n.type === "start" && (n.label === `Start ${branchFilter}` || n.label === branchFilter));
-    const branchPath = startNode ? startNode.branch : branchFilter;
-    const filteredNodeIds = new Set();
-    for (const node of nodes) {
-        if (node.branch === branchPath ||
-            node.branch.startsWith(`${branchPath}:`) ||
-            node.branch.startsWith(`${branchPath}/`)) {
-            filteredNodeIds.add(node.id);
-        }
-    }
-    const edgesFromFiltered = edges.filter((e) => filteredNodeIds.has(e.from));
-    for (const edge of edgesFromFiltered) {
-        addDownstreamNodes(edge.to, nodes, edges, filteredNodeIds);
-    }
-    const filteredNodes = nodes.filter((n) => filteredNodeIds.has(n.id));
-    const filteredEdges = edges.filter((e) => filteredNodeIds.has(e.from) && filteredNodeIds.has(e.to));
-    return { nodes: filteredNodes, edges: filteredEdges };
-}
-function addDownstreamNodes(nodeId, nodes, edges, nodeSet) {
-    if (nodeSet.has(nodeId)) {
-        return;
-    }
-    const node = nodes.find((n) => n.id === nodeId);
-    if (!node) {
-        return;
-    }
-    nodeSet.add(nodeId);
-    const outgoingEdges = edges.filter((e) => e.from === nodeId);
-    for (const edge of outgoingEdges) {
-        addDownstreamNodes(edge.to, nodes, edges, nodeSet);
-    }
-}
-function getAvailableBranches(nodes) {
-    const branches = new Set();
-    for (const node of nodes) {
-        const branch = node.branch;
-        const topLevel = branch.split(/[:/]/)[0];
-        branches.add(topLevel);
-        if (node.type === "start" && node.label.startsWith("Start ")) {
-            branches.add(node.label.replace("Start ", ""));
-        }
-    }
-    return Array.from(branches).sort();
-}
 function renderDump(placedNodes, edges, pipelineName, options) {
     const nodeMap = new Map(placedNodes.map((n) => [n.id, n]));
     const withGrid = ensureGridCoordinates(placedNodes);
@@ -187,7 +97,7 @@ function renderDump(placedNodes, edges, pipelineName, options) {
     if (options.includeFullLayout) {
         sections.push("", `Full layout (coarse ASCII, ~${FULL_LAYOUT_SCALE}px per cell):`, renderFullLayout(withGrid, edges, nodeMap));
     }
-    const ascii = sections.filter(Boolean).join("\n");
+    const ascii = sections.filter((section) => section !== undefined).join("\n");
     return { ascii, nodes: withGrid, edges };
 }
 function renderAsciiGrid(nodes, cellWidth) {
