@@ -7,7 +7,6 @@ exports.renderPipelineSvg = renderPipelineSvg;
 exports.writePipelineImageAsync = writePipelineImageAsync;
 const node_fs_1 = __importDefault(require("node:fs"));
 const node_path_1 = __importDefault(require("node:path"));
-const sharp_1 = __importDefault(require("sharp"));
 const pipelineParser_1 = require("./pipelineParser");
 const layout_1 = require("../webview-ui/layout");
 const constants_1 = require("../webview-ui/constants");
@@ -63,12 +62,7 @@ async function writePipelineImageAsync(options) {
         node_fs_1.default.writeFileSync(outputPath, svg, "utf8");
         return outputPath;
     }
-    if (ext === ".png") {
-        const buffer = await (0, sharp_1.default)(Buffer.from(svg)).png().toBuffer();
-        node_fs_1.default.writeFileSync(outputPath, buffer);
-        return outputPath;
-    }
-    throw new Error("Output path must end with .svg or .png");
+    throw new Error("Output path must end with .svg");
 }
 function normalizeOptions(options) {
     const scale = typeof options.scale === "number" && options.scale > 0 ? options.scale : 1;
@@ -364,7 +358,8 @@ function buildSvg(input) {
     lines.push(`<?xml version="1.0" encoding="UTF-8"?>`);
     lines.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">`);
     if (input.background && input.background !== "transparent") {
-        lines.push(`<rect x="0" y="0" width="${input.width}" height="${input.height}" fill="${escapeXml(input.background)}"/>`);
+        const fillAttrs = svgFillAttributes(input.background);
+        lines.push(`<rect x="0" y="0" width="${input.width}" height="${input.height}" ${fillAttrs}/>`);
     }
     if (input.grid) {
         lines.push(drawGrid(input.width, input.height, input.offsetX, input.offsetY));
@@ -420,7 +415,8 @@ function drawNode(node) {
     const parts = [];
     parts.push(`<g>`);
     parts.push(`<rect x="${node.x}" y="${node.y}" width="${nodeWidth}" height="${nodeHeight}" rx="10" ry="10" fill="${constants_1.THEME.nodeFill}" stroke="${color}" stroke-width="2"/>`);
-    parts.push(`<rect x="${node.x + 1}" y="${node.y + 1}" width="${nodeWidth - 2}" height="${nodeHeight / 2}" rx="9" ry="9" fill="${constants_1.THEME.nodeOverlay}"/>`);
+    const overlayFill = svgFillAttributes(constants_1.THEME.nodeOverlay);
+    parts.push(`<rect x="${node.x + 1}" y="${node.y + 1}" width="${nodeWidth - 2}" height="${nodeHeight / 2}" rx="9" ry="9" ${overlayFill}/>`);
     parts.push(`<rect x="${node.x + 10}" y="${node.y + 10}" width="${pillWidth}" height="18" rx="9" ry="9" fill="${color}"/>`);
     parts.push(`<text x="${node.x + 16}" y="${node.y + 14}" font-family="${fontFamily}" font-size="10" fill="#0b1021" dominant-baseline="hanging">${escapeXml(pillText)}</text>`);
     parts.push(`<text x="${node.x + 10}" y="${node.y + 34}" font-family="${fontFamily}" font-size="13" font-weight="bold" fill="${constants_1.THEME.textColor}" dominant-baseline="hanging">${escapeXml(titleText)}</text>`);
@@ -432,9 +428,10 @@ function drawNode(node) {
     return parts.join("");
 }
 function drawNavigationIndicator(x, y) {
+    const backgroundFill = svgFillAttributes("rgba(242,192,120,0.2)");
     return [
         `<g>`,
-        `<rect x="${x}" y="${y}" width="20" height="20" rx="4" ry="4" fill="rgba(242,192,120,0.2)"/>`,
+        `<rect x="${x}" y="${y}" width="20" height="20" rx="4" ry="4" ${backgroundFill}/>`,
         `<line x1="${x + 5}" y1="${y + 15}" x2="${x + 15}" y2="${y + 5}" stroke="#f2c078" stroke-width="1.5" stroke-linecap="round"/>`,
         `<line x1="${x + 9}" y1="${y + 5}" x2="${x + 15}" y2="${y + 5}" stroke="#f2c078" stroke-width="1.5" stroke-linecap="round"/>`,
         `<line x1="${x + 15}" y1="${y + 5}" x2="${x + 15}" y2="${y + 11}" stroke="#f2c078" stroke-width="1.5" stroke-linecap="round"/>`,
@@ -485,4 +482,13 @@ function escapeXml(value) {
         .replace(/>/g, "&gt;")
         .replace(/\"/g, "&quot;")
         .replace(/'/g, "&#39;");
+}
+function svgFillAttributes(color) {
+    const rgbaMatch = color.match(/^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([0-9]*\.?[0-9]+)\s*\)$/i);
+    if (rgbaMatch) {
+        const [, r, g, b, alphaRaw] = rgbaMatch;
+        const alpha = Math.min(1, Math.max(0, Number(alphaRaw)));
+        return `fill="rgb(${r}, ${g}, ${b})" fill-opacity="${alpha}"`;
+    }
+    return `fill="${escapeXml(color)}"`;
 }

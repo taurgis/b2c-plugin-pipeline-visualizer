@@ -19,12 +19,11 @@ class PipelineImage extends core_1.Command {
     }
 }
 PipelineImage.description = "Render a pipeline image using the same layout and routing as the webview.";
-PipelineImage.longDescription = "Exports an SVG or PNG image based on the output file extension. Use --grid to include the background grid and --show-bendpoints to show forced routing points.";
+PipelineImage.longDescription = "Exports an SVG image. Use --grid to include the background grid and --show-bendpoints to show forced routing points.";
 PipelineImage.examples = [
     "b2c pipeline image pipeline_examples/Cart.xml --out debug/layouts/Cart.svg",
-    "b2c pipeline image pipeline_examples/Cart.xml --out debug/layouts/Cart.png",
     "b2c pipeline image pipeline_examples/Order.xml --out debug/layouts/Order.svg --branch Checkout",
-    "b2c pipeline image pipeline_examples/Mail.xml --out debug/layouts/Mail.png --grid",
+    "b2c pipeline image pipeline_examples/Mail.xml --out debug/layouts/Mail.svg --grid",
 ];
 PipelineImage.args = {
     input: core_1.Args.string({
@@ -35,7 +34,7 @@ PipelineImage.args = {
 PipelineImage.flags = {
     out: core_1.Flags.string({
         char: "o",
-        description: "Output file path (required, .svg or .png)",
+        description: "Output file path (required, .svg)",
         required: true,
     }),
     branch: core_1.Flags.string({

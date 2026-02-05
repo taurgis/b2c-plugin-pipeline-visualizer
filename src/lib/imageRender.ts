@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import sharp from "sharp";
 import { parsePipeline } from "./pipelineParser";
 import type { PipelineEdge as ParsedEdge, PipelineNode as ParsedNode } from "./types";
 import { calculateLayout, buildNodeMap } from "../webview-ui/layout";
@@ -127,13 +126,7 @@ export async function writePipelineImageAsync(options: ImageOptions): Promise<st
     return outputPath;
   }
 
-  if (ext === ".png") {
-    const buffer = await sharp(Buffer.from(svg)).png().toBuffer();
-    fs.writeFileSync(outputPath, buffer);
-    return outputPath;
-  }
-
-  throw new Error("Output path must end with .svg or .png");
+  throw new Error("Output path must end with .svg");
 }
 
 function normalizeOptions(options: ImageOptions): NormalizedImageOptions {
@@ -561,8 +554,9 @@ function buildSvg(input: {
   );
 
   if (input.background && input.background !== "transparent") {
+    const fillAttrs = svgFillAttributes(input.background);
     lines.push(
-      `<rect x="0" y="0" width="${input.width}" height="${input.height}" fill="${escapeXml(input.background)}"/>`
+      `<rect x="0" y="0" width="${input.width}" height="${input.height}" ${fillAttrs}/>`
     );
   }
 
@@ -635,8 +629,9 @@ function drawNode(node: PlacedNode): string {
   parts.push(
     `<rect x="${node.x}" y="${node.y}" width="${nodeWidth}" height="${nodeHeight}" rx="10" ry="10" fill="${THEME.nodeFill}" stroke="${color}" stroke-width="2"/>`
   );
+  const overlayFill = svgFillAttributes(THEME.nodeOverlay);
   parts.push(
-    `<rect x="${node.x + 1}" y="${node.y + 1}" width="${nodeWidth - 2}" height="${nodeHeight / 2}" rx="9" ry="9" fill="${THEME.nodeOverlay}"/>`
+    `<rect x="${node.x + 1}" y="${node.y + 1}" width="${nodeWidth - 2}" height="${nodeHeight / 2}" rx="9" ry="9" ${overlayFill}/>`
   );
   parts.push(
     `<rect x="${node.x + 10}" y="${node.y + 10}" width="${pillWidth}" height="18" rx="9" ry="9" fill="${color}"/>`
@@ -660,9 +655,10 @@ function drawNode(node: PlacedNode): string {
 }
 
 function drawNavigationIndicator(x: number, y: number): string {
+  const backgroundFill = svgFillAttributes("rgba(242,192,120,0.2)");
   return [
     `<g>`,
-    `<rect x="${x}" y="${y}" width="20" height="20" rx="4" ry="4" fill="rgba(242,192,120,0.2)"/>`,
+    `<rect x="${x}" y="${y}" width="20" height="20" rx="4" ry="4" ${backgroundFill}/>`,
     `<line x1="${x + 5}" y1="${y + 15}" x2="${x + 15}" y2="${y + 5}" stroke="#f2c078" stroke-width="1.5" stroke-linecap="round"/>`,
     `<line x1="${x + 9}" y1="${y + 5}" x2="${x + 15}" y2="${y + 5}" stroke="#f2c078" stroke-width="1.5" stroke-linecap="round"/>`,
     `<line x1="${x + 15}" y1="${y + 5}" x2="${x + 15}" y2="${y + 11}" stroke="#f2c078" stroke-width="1.5" stroke-linecap="round"/>`,
@@ -724,4 +720,18 @@ function escapeXml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function svgFillAttributes(color: string): string {
+  const rgbaMatch = color.match(
+    /^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([0-9]*\.?[0-9]+)\s*\)$/i
+  );
+
+  if (rgbaMatch) {
+    const [, r, g, b, alphaRaw] = rgbaMatch;
+    const alpha = Math.min(1, Math.max(0, Number(alphaRaw)));
+    return `fill="rgb(${r}, ${g}, ${b})" fill-opacity="${alpha}"`;
+  }
+
+  return `fill="${escapeXml(color)}"`;
 }

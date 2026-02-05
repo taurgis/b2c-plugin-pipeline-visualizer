@@ -6,13 +6,12 @@ export default class PipelineImage extends Command {
     "Render a pipeline image using the same layout and routing as the webview.";
 
   static longDescription =
-    "Exports an SVG or PNG image based on the output file extension. Use --grid to include the background grid and --show-bendpoints to show forced routing points.";
+    "Exports an SVG image. Use --grid to include the background grid and --show-bendpoints to show forced routing points.";
 
   static examples = [
     "b2c pipeline image pipeline_examples/Cart.xml --out debug/layouts/Cart.svg",
-    "b2c pipeline image pipeline_examples/Cart.xml --out debug/layouts/Cart.png",
     "b2c pipeline image pipeline_examples/Order.xml --out debug/layouts/Order.svg --branch Checkout",
-    "b2c pipeline image pipeline_examples/Mail.xml --out debug/layouts/Mail.png --grid",
+    "b2c pipeline image pipeline_examples/Mail.xml --out debug/layouts/Mail.svg --grid",
   ];
 
   static args = {
@@ -25,7 +24,7 @@ export default class PipelineImage extends Command {
   static flags = {
     out: Flags.string({
       char: "o",
-      description: "Output file path (required, .svg or .png)",
+      description: "Output file path (required, .svg)",
       required: true,
     }),
     branch: Flags.string({

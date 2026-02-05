@@ -40,12 +40,11 @@ Options:
 
 ```bash
 b2c pipeline image path/to/pipeline.xml --out debug/layouts/pipeline.svg
-b2c pipeline image path/to/pipeline.xml --out debug/layouts/pipeline.png
 ```
 
 Options:
 
-- `-o, --out <path>`: Output file path (required, .svg or .png).
+- `-o, --out <path>`: Output file path (required, .svg).
 - `-b, --branch <name>`: Filter by branch name or start node name.
 - `-s, --scale <n>`: Scale factor for SVG dimensions.
 - `-p, --padding <n>`: Padding around the rendered pipeline in pixels.
